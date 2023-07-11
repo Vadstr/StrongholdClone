@@ -8,7 +8,7 @@ public class TerrainEditor : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     [Range(0, 0.001f)]
     [SerializeField]  
     private float Sensivity;
-    [Range(0, 20)]
+    [Range(1, 15)]
     [SerializeField]  
     private int brushSize = 10;
     [SerializeField]  
@@ -19,7 +19,12 @@ public class TerrainEditor : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private delegate void ActionOnMap();
     private event ActionOnMap ActionOnMapEvent;
     private float[,] heights;
+    private float _sensivity;
     private Vector3 previousMousePosition;
+    
+    private Nullable<bool> isDown = null;
+    private Nullable<bool> isMax = null;
+    
     
     private void Awake()
     {
@@ -92,12 +97,26 @@ public class TerrainEditor : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             {
                 if(isCircle && Math.Pow(i - terrainPosition.x, 2) + Math.Pow(j - terrainPosition.z , 2) > Math.Pow(brushSize, 2))
                     continue;
-                    
-                if (heights[j, i] + Sensivity >= 0.03f)
-                    heights[j, i] = 0.03f;
-                else
-                    heights[j, i] += Sensivity;
 
+                if (isMax != null)
+                {
+                    if (isMax.Value)
+                        heights[j, i] = 0.03f;
+                    else
+                        heights[j, i] = 0.00f;
+                    
+                    continue;
+                }
+
+                if (isDown != null)
+                {
+                    if (heights[j, i] + _sensivity >= 0.03f)
+                        heights[j, i] = 0.03f;
+                    else if (heights[j, i] + _sensivity <= 0.00f)
+                        heights[j, i] = 0.00f;
+                    else
+                        heights[j, i] += _sensivity;
+                }
             }
         }
     }
@@ -117,6 +136,40 @@ public class TerrainEditor : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             ActionOnMapEvent -= UpdateHeights;
+        }
+    }
+
+    public void UpOrDown(bool isDown)
+    {
+        this.isDown = isDown;
+        isMax = null;
+
+        _sensivity = isDown ? -Sensivity : Sensivity;
+    }
+    
+    public void MinMax(bool isMax)
+    {
+        isDown = null;
+        this.isMax = isMax;
+    }
+    
+    public void CircluSquare(bool isCircle)
+    {
+        this.isCircle = isCircle;
+    }
+
+    public void UpdateRadius(bool makeBigger)
+    {
+        brushSize = makeBigger ? Math.Min(brushSize + 1, 15) : Math.Max(brushSize - 1, 1);
+    }
+
+    public void UpdateSensivity(bool makeBigger)
+    {
+        Sensivity = makeBigger ? Math.Min(Sensivity + 0.0001f, 0.001f) : Math.Max(Sensivity - 0.0001f, 0.0001f);
+
+        if (isDown != null)
+        {
+            UpOrDown(isDown.Value);
         }
     }
 }
